@@ -4,7 +4,7 @@
 
 enum Token {
     case plainText(string: String)
-    case beginTag(name: String)
+    case beginTag(name: String, attributes: [Attribute])
     case endTag(name: String)
 }
 
@@ -22,20 +22,40 @@ let spaces: Parser<String> = {
 }()
 
 let plainText: Parser<Token> = {
-    let letter = satisfy({ $0 != "<" && $0 != ">" })
+    let letter = satisfy({ ($0 != "<") && ($0 != ">") })
     let string = map(many1(letter)) { String($0) }
     return map(string) { .plainText(string: $0) }
 }()
 
 let tag: Parser<Token> = {
-    let letter = satisfy({ $0 != "<" && $0 != ">" })
+    let letter = satisfy({ ($0 != "<") && ($0 != ">") && ($0 != "=") })
     let string = map(many1(letter)) { String($0) }
-    let name = between(word("<"), string, eatRight(word(">"), spaces))
-    return map(name) {
-        if $0.hasPrefix("/") {
-            return .endTag(name: String($0.dropFirst(1)))
+    let condition: (Character) -> Bool = {
+        let a: Bool = ($0 != "<")
+        let b: Bool = ($0 != ">")
+        let c: Bool = ($0 != "=")
+        let d: Bool = ($0 != " ")
+        return a && b && c && d
+    }
+    let letterNoSpace = satisfy(condition)
+    let stringNoSpace = map(many1(letterNoSpace)) { String($0) }
+    let keyValue = and(eatRight(string, word("=")), stringNoSpace)
+    let attribute = map(keyValue) { (arg: (String, String)) -> Attribute in
+        let (key, value) = arg
+        return Attribute(key, value)
+    }
+    let attributes = list(attribute, spaces)
+    let info = between(
+        word("<"),
+        and(eatRight(stringNoSpace, spaces), optional(attributes)),
+        eatRight(word(">"), spaces)
+    )
+    return map(info) { arg in
+        let (name, attributes) = arg
+        if name.hasPrefix("/") {
+            return .endTag(name: String(name.dropFirst(1)))
         } else {
-            return .beginTag(name: $0)
+            return .beginTag(name: name, attributes: attributes ?? [])
         }
     }
 }()
@@ -58,7 +78,7 @@ func tokenize(_ htmlString: String) -> [Token] {
         }
         let newRemainderLength = remainder.count
         guard newRemainderLength < remainderLength else {
-            break
+            fatalError("Can not be consumed!")
         }
     }
     return tokens

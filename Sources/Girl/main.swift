@@ -9,7 +9,8 @@ let htmlString = """
     <div>
         <div>
             <p>Hello</p>
-            <p>World</p>
+            <p>World<b>!</b></p>
+            <a href="https://apple.com" width=100>Apple Inc.</a>
         </div>
     </div>
     """

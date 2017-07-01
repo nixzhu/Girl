@@ -46,13 +46,15 @@ func parse(_ tokens: [Token]) -> Node {
         switch token {
         case let .plainText(string):
             stack.push(.token(.plainText(string: string)))
-        case let .beginTag(name):
-            stack.push(.token(.beginTag(name: name)))
+        case let .beginTag(name, attributes):
+            stack.push(.token(.beginTag(name: name, attributes: attributes)))
         case let .endTag(name):
+            var attributes: [Attribute] = []
             var items: [Item] = []
             while let item = stack.pop() {
                 if case let .token(token) = item {
-                    if case let .beginTag(_name) = token, name == _name {
+                    if case let .beginTag(_name, _attributes) = token, name == _name {
+                        attributes = _attributes
                         break
                     }
                 }
@@ -65,7 +67,7 @@ func parse(_ tokens: [Token]) -> Node {
             } else {
                 children = items.map({ $0.node }).flatMap({ $0 }).reversed()
             }
-            stack.push(.node(.element(Element(name, [], children))))
+            stack.push(.node(.element(Element(name, attributes, children))))
         }
         return true
     }

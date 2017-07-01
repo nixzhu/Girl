@@ -66,6 +66,16 @@ func map<A, B>(_ parser: @escaping Parser<A>, _ transform: @escaping (A) -> B) -
     }
 }
 
+func optional<A>(_ parser: @escaping Parser<A>) -> Parser<A?> {
+    return { stream in
+        if let (result, remainder) = parser(stream) {
+            return (result, remainder)
+        } else {
+            return (nil, stream)
+        }
+    }
+}
+
 func one<A>(of parsers: [Parser<A>]) -> Parser<A> {
     return { stream in
         for parser in parsers {
@@ -74,6 +84,14 @@ func one<A>(of parsers: [Parser<A>]) -> Parser<A> {
             }
         }
         return nil
+    }
+}
+
+func and<A, B>(_ left: @escaping Parser<A>, _ right: @escaping Parser<B>) -> Parser<(A, B)> {
+    return { stream in
+        guard let (result1, remainder1) = left(stream) else { return nil }
+        guard let (result2, remainder2) = right(remainder1) else { return nil }
+        return ((result1, result2), remainder2)
     }
 }
 
@@ -107,3 +125,14 @@ func eatRight<A, B>(_ left: @escaping Parser<A>, _ right: @escaping Parser<B>) -
         return (result1, remainder2)
     }
 }
+
+func list<A, B>(_ parser: @escaping Parser<A>, _ separator: @escaping Parser<B>) -> Parser<[A]> {
+    return { stream in
+        let separatorThenParser = and(separator, parser)
+        let parser = and(parser, many(separatorThenParser))
+        guard let (result, remainder) = parser(stream) else { return nil }
+        let finalResult = [result.0] + result.1.map({ $0.1 })
+        return (finalResult, remainder)
+    }
+}
+

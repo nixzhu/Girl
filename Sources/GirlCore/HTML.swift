@@ -52,6 +52,6 @@ public func render(element: Element) -> String {
 
 public func render(attributes: [Attribute]) -> String {
     return attributes
-        .map { attr in "\(attr.key)=\"\(attr.value)\"" }
+        .map { attr in "\(attr.key)=\(attr.value)" }
         .joined(separator: " ")
 }
